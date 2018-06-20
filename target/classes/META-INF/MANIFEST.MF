@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Implementation-Title: dataConnector
+Implementation-Version: 1.0.0
+Built-By: specki
+Specification-Title: dataConnector
+Implementation-Vendor-Id: com.not-group-b
+Build-Jdk: 1.8.0_121
+Specification-Version: 1.0
+Implementation-URL: https://projects.spring.io/spring-boot/#/spring-bo
+ ot-starter-parent/dataConnector
+Created-By: Maven Integration for Eclipse
+
