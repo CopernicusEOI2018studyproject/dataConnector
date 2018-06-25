@@ -1,4 +1,4 @@
-package com.notgroupb.dataConnector.selector;
+package org.notgroupb.dataConnector.selector;
 
 import com.tm.kafka.connect.rest.RestSourceConnectorConfig;
 import com.tm.kafka.connect.rest.selector.TopicSelector;

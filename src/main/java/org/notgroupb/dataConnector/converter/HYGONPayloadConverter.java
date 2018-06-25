@@ -1,4 +1,4 @@
-package com.notgroupb.dataConnector.converter;
+package org.notgroupb.dataConnector.converter;
 
 import static java.lang.System.currentTimeMillis;
 
