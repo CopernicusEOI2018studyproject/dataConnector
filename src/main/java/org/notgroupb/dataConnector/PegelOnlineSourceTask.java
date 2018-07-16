@@ -1,11 +1,10 @@
 package org.notgroupb.dataConnector;
 
 
-import static java.lang.System.currentTimeMillis;
-
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,6 +45,7 @@ public class PegelOnlineSourceTask extends SourceTask {
     pollInterval = connectorConfig.getPollInterval();
     method = "GET";
     url = requestURL;
+    log.error("starting connector!");
     
     // Get initial Stations List
     producer = new KafkaProducer<String, PegelOnlineDataPoint>(producerProperties());
@@ -76,7 +76,7 @@ public class PegelOnlineSourceTask extends SourceTask {
 	Properties props = new Properties();
 	props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 	props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-			"org.notgroupb.dataPreformatter.formats.DataPointSerializer");
+			"org.notgroupb.formats.serialize.DataPointSerializer");
 	props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
 			"org.apache.kafka.common.serialization.StringSerializer");
 	props.put(ProducerConfig.RETRIES_CONFIG, 0);
@@ -93,7 +93,12 @@ public class PegelOnlineSourceTask extends SourceTask {
 
 	  for (String element : endpoints) {
 		  try {
-			  String url = requestURL + element + "/W/measurements.json?start=P1D";
+			  
+			  //TODO: Escape Whitespace in URL
+			  element = URLEncoder.encode(element, "ISO-8859-1");
+			  
+			  String url = requestURL + "/" + element + "/W/measurements.json?start=P1D";
+			  
 			  HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
 			  conn.setRequestMethod(method);
 			  if (data != null) {
@@ -106,16 +111,17 @@ public class PegelOnlineSourceTask extends SourceTask {
 				  log.trace("Response code: {}, Request data: {}", conn.getResponseCode(), data);
 			  }
 			  Map<String, String> sourcePartition = Collections.singletonMap("URL", "PegelOnlineDataConnector");
-			  Map<String, Long> sourceOffset = Collections.singletonMap("timestamp", currentTimeMillis());
-			  SourceRecord sourceRecord = new SourceRecord(sourcePartition, sourceOffset, "PegelOnlineData",
-					  Schema.STRING_SCHEMA, element, Schema.STRING_SCHEMA, IOUtils.toByteArray(conn.getInputStream()));
+			  Map<String, Long> sourceOffset = Collections.singletonMap("timestamp", System.currentTimeMillis());
+			  SourceRecord sourceRecord = new SourceRecord(sourcePartition, sourceOffset, "PegelOnlineDataSource",
+					  Schema.STRING_SCHEMA, element, Schema.STRING_SCHEMA, new String(IOUtils.toByteArray(conn.
+							  getInputStream())));
 
 			  if (log.isTraceEnabled()) {
 				  log.trace("SourceRecord: {}", sourceRecord);
 			  }
 			  records.add(sourceRecord);
 		  } catch (Exception e) {
-			  log.error("REST source connector poll() failed", e);
+			  log.error("REST source connector poll() failed for element: " + element, e);
 			  continue;
 		  }
 	  }
@@ -153,13 +159,13 @@ public class PegelOnlineSourceTask extends SourceTask {
 				if (dp == null) {
 					continue;
 				}
-				String key = allStations.getJSONObject(i).getString("longname");
+				String key = allStations.getJSONObject(i).getString("uuid");
 				
 				ProducerRecord<String, PegelOnlineDataPoint> result = new ProducerRecord<>(topicname,key,dp);
 				producer.send(result);
 				
 				// Add Station to be polled frequently
-				endpoints.add(dp.getName());
+				endpoints.add(key);
 			}
 		} catch (Exception e) {
 			log.error("Error parsing response to JSON. Error was: " + e + e.getMessage());
